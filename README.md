@@ -1,5 +1,6 @@
 # pipelinetools
 Connect external data sources to your data warehouse
+![](img/externalDataBigQuery.png?raw=true)
 
 ## db-connectors/stack/bq-mysql-pipeName
 ### Extract millions of rows from MySQL with AWS Lambda and Node.js.
@@ -75,4 +76,4 @@ This project is licensed under the Apache-2.0 License.
 I am tracking features requests from users here to prioritise what is important for our users. Please file an issue and we'll answer you as soon as possible.
 
 # More
-Contact me at linkedin.com/mshakhomirov
+Contact me at [https://www.linkedin.com/in/mshakhomirov/](https://www.linkedin.com/in/mshakhomirov/)
