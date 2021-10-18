@@ -1,0 +1,31 @@
+{
+  "name": "bq-mysql-connector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lambda function to extract data from MySQl database",
+  "main": "app.js",
+  "scripts": {
+    "test": "export DEBUG=true; export NODE_ENV=staging; run-local-lambda --file app.js --event test/data.json --timeout 10000",
+    "predeploy": "rm -rf node_modules;npm i --only=production"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "author": "Mike Shakhomirov mike.shakhomirov@gmail.com",
+  "license": "ISC",
+  "devDependencies": {
+    "aws-sdk": "2.804.0",
+    "run-local-lambda": "1.1.1",
+    "eslint": "^7.20.0",
+    "eslint-plugin-classes": "^0.1.1",
+    "eslint-plugin-promise": "^4.3.1"
+  },
+  "dependencies": {
+    "config": "^3.3.6",
+    "csv-stringify": "^5.6.2",
+    "js-yaml": "^4.1.0",
+    "moment": "^2.24.0",
+    "mysql2": "^2.0.0",
+    "through2": "^4.0.2"
+  }
+}

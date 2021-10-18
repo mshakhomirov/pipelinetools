@@ -1,0 +1,23 @@
+Tables:
+
+  -
+    name: some_table_1
+    bigqueryName: some_alt_table_name_1
+    sql: SELECT * FROM schema.some_table_1;
+    querySize: select count(*) cnt, NOW() ts from scheam.some_table_1 ;
+    output: s3
+    dryRun: false
+    disabled: false
+    notes: daily.
+  -
+    name: some_table_2
+    bigqueryName: some_alt_table_name_2
+    sql: select * from schema.some_table_2;
+    querySize: select count(product_type_id) cnt, NOW() ts from schema.some_table_2;
+    output: s3Stream # will save query results in streaming mode as one file NLDJ formatted.
+    dryRun: false
+    disabled: true
+
+saveTo:
+  bucket: bucket-staging.shakhomirov.aws
+  key: prefix_if_needed/

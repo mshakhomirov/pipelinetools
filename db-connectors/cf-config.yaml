@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Testing:
+    Type: String
+    AllowedValues: ['true','false']
+  Email:
+    Type: String
+    Description: Email address to notify when Lambda has triggered an alarm
+    Default: 'mike.shakhomirov@gmail.com' #Default: 'arn:aws:sns:eu-west-1:1234:Alerts' # Can be SNS if needed.
+
+Resources:
+
+  AlarmNotificationTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      Subscription:
+        - Endpoint: !Ref Email
+          Protocol: email
+
+  LambdaPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaRole
+    Properties:
+      Roles:
+        - !Ref LambdaRole
+      PolicyName: 'bq-pipe-lambda-policy'
+      PolicyDocument:
+        {
+          "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Action": "s3:*",
+                    "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:*"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:CreateNetworkInterface",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DeleteNetworkInterface",
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                      "logs:*"
+                  ],
+                  "Resource": [
+                      "arn:aws:logs:*:log-group:/aws/lambda/*:*"
+                  ]
+                },
+                {
+                    "Sid": "CloudWatchEventsFullAccess",
+                    "Effect": "Allow",
+                    "Action": "events:*",
+                    "Resource": ["*"]
+                },
+                {
+                    "Sid": "IAMPassRoleForCloudWatchEvents",
+                    "Effect": "Allow",
+                    "Action": "iam:PassRole",
+                    "Resource": ["arn:aws:iam::*:role/AWS_Events_Invoke_Targets"]
+                },
+                {
+                  "Action": [
+                      "rds:Describe*",
+                      "rds:ListTagsForResource",
+                      "ec2:DescribeAccountAttributes",
+                      "ec2:DescribeAvailabilityZones",
+                      "ec2:DescribeInternetGateways",
+                      "ec2:DescribeSecurityGroups",
+                      "ec2:DescribeSubnets",
+                      "ec2:DescribeVpcAttribute",
+                      "ec2:DescribeVpcs"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+              },
+              {
+                  "Action": [
+                      "cloudwatch:GetMetricStatistics",
+                      "logs:DescribeLogStreams",
+                      "logs:GetLogEvents"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+              }
+  
+            ]
+        }
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+
+
+  ####  bq-mysql-PipeName Lambda ####
+  #### replace **PipeName** with your MySQL table name and use this Lambda to extract data from it.
+
+  PipeNameDBLambda:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaPolicy
+    Properties:
+      # see https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#property-types
+      Handler: bq-mysql-PipeName/app.handler
+      Runtime: nodejs14.x
+      FunctionName: bq-mysql-PipeName
+      Description: BigQuery update for tables PipeName_PipeName and PipeName_category
+      Environment:
+        Variables:
+          DEBUG: true
+          TESTING: 'false' # !Ref Testing
+          NODE_ENV: production
+          DB_BUCKET_TEST: "data-staging.shakhomirov.aws" # Replace with your bucket names.
+          DB_BUCKET: "data-production.shakhomirov.aws"
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: 180
+      MemorySize: 128
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-your-security-group-same-as-mysql-db
+        SubnetIds:
+          - subnet-your-subnet-same-as-mysql-db
+          - subnet-your-subnet-same-as-mysql-db
+          - subnet-your-subnet-same-as-mysql-db
+
+  PipeNameDBLambdaTrigger:
+    Type: AWS::Events::Rule
+    DependsOn: PipeNameDBLambda
+    Properties:
+      Description: Triggers the lambda 'bq-mysql-PipeName' to extract data from MySQL db.
+      # https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html 
+      ScheduleExpression: 'cron(15 02 * * ? *)'
+      Targets:
+       - { Arn: !GetAtt PipeNameDBLambda.Arn, Input: '{}', Id: 'PipeNameDBTrigger' }
+
+  PermissionForEventsToInvokePipeNameDBLambda:
+    Type: "AWS::Lambda::Permission"
+    DependsOn: [PipeNameDBLambda, PipeNameDBLambdaTrigger]
+    Properties:
+      FunctionName:
+        Ref: PipeNameDBLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt PipeNameDBLambdaTrigger.Arn
+
+  PipeNameLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: /aws/lambda/bq-mysql-PipeName
+  PipeNameLambdaERRORMetricFilter:
+    Type: 'AWS::Logs::MetricFilter'
+    DependsOn: PipeNameLambdaLogGroup
+    Properties:
+      LogGroupName: /aws/lambda/bq-mysql-PipeName
+      FilterPattern: ?ERROR ?Error ?error
+      MetricTransformations:
+        - MetricValue: '1'
+          MetricNamespace: bq-mysql-PipeName # !Ref ServiceName 
+          MetricName: ERRORCount
+  PipeNameLambdaERRORMetricAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    DependsOn: PipeNameLambdaERRORMetricFilter
+    Properties:
+      AlarmDescription: Trigger a the number ERROR greater than 5 for 5 consecutive minutes.
+      Namespace: bq-mysql-PipeName # !Ref ServiceName
+      MetricName: ERRORCount
+      Statistic: Sum
+      Period: '60'
+      EvaluationPeriods: '5'
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: '0'
+      AlarmActions:
+        - !Ref AlarmNotificationTopic

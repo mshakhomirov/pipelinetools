@@ -1,0 +1,5 @@
+roDb:
+    host: some-db.prod.shakhomirov.aws
+    name: some_name
+    password: some_password
+    dbName: some_schema
