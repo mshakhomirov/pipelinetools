@@ -1,0 +1,20 @@
+{ "Production": 
+    {
+      "Tables": [
+        {
+          "name" : "paypal_transaction"
+        }
+      ]
+    }
+  ,
+  "Staging": 
+    {
+      "Tables": [
+        
+        {
+          "name" : "paypal_transaction"
+        }
+    ]
+    }
+
+}

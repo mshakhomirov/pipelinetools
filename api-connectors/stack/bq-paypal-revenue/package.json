@@ -1,0 +1,21 @@
+{
+  "name": "bq-paypal-revenue",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "test": "export DEBUG=metrics; run-local-lambda --file app.js --event test/data.json --timeout 10000"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {
+    "aws-sdk": "2.804.0",
+    "run-local-lambda": "1.1.1"
+  },
+  "main": "app",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "moment": "^2.20.1"
+  }
+}
